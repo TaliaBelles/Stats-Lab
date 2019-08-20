@@ -1,0 +1,77 @@
+---
+title: "Lab- Correlation and Linear Regression"
+author: Talia Neal
+date: "10.31.18"
+output: html_notebook
+---
+
+Your assignment is to conduct two different linear regressions on the TreePlots.csv data: (1) mean tree diameter (mDBH.cm) versus plot biomass (AGBH.Mg.ha), and (2) mean height (mH.m) versus mean wood density (mWD.g.m3). In the first regression, biomass should be your dependent variable. In the second regression,
+mean height should be your dependent variable.
+See my above comment about normality, and don’t sweat departure from normality too much.
+For each regression, write a 1-page description of your analysis, results, and inference. Each write-up should include the following information:
+
+
+#1. mean tree diameter vs. plot biomass. 
+
+The null hypothesis is that mean tree diameter has no significant relationship to plot biomass. The alternative is that there is a linear relationship between mean tree diameter and plot biomass. I first examined the data by plotting the mean tree diameter vs biomass and there does appear to be a positive linear correlation between the two parameters. There are a few data points that look like potential outliers, but overall the data suggest that this analysis is a reasonable approach. A correlation test further confirmed that the two variables are significantly correlated at r = 0.66 and p < 0.001. The ratio of variance between the two variables was also checked and looked ok to proceed with analysis.
+
+Next I ran a linear regression in which tree biomass is the dependent variable and mean tree diameter is the independent variable. The results indicated that mean tree diameter has statiscially significant effects on plot biomass (p < 0.001).  Residual standard error was 94, which indicates that the model fits the data reasonably well. The multiple r squared was 0.44, which is ok, but does indicate that expanding the model to include more parameters might be useful. Average forest biomass is significantly related to mean tree diameter (biomass = 320.88 + 25.35 × Diameter, R2 = 0.4371, F1,71 = 56.9, p < 0.001). (Every one increment (cm) of mean tree diameter increases the plot biomass by 23.35 mg).
+
+Lastly, diagnostics were checked to see the fit of the model. The plot of residuals vs. fitted data appears to have some curviture in structure, indicating that some of the variance was not explained by the model and perhaps a higher order parameter should be investigated. The QQ Plot looks good for intermediate values, but values at the extremes are off.  This indicates that  low values are overpredicted and high values are underpredicted. I examined log transforming the data at this point, but the results looked worse, so I continued with data as provided. Both the Scale-Location and Residuals vs. Leverage plots also indicate possible issues with the model. Scattered points in these plots suggest that some points have excessive leverage. Thus after analyzing the information, the model shows that we can reject the null hypothesis due to the significant linear relationship. However, the model isn't an ideal fit. It would be prudent to examine the points that appear to be outliers and consider removal if appropriate. In addition, consideration might be given to applying an expanded model that explains more of the variance. 
+
+
+
+
+```{r}
+
+TreePlots <- read.csv("TreePlots.csv")
+HT <- TreePlots$mH.m
+WD <- TreePlots$mWD.g.m3
+#How do the data look?
+plot(TD, BM, lwd = 2, las = 1, pch = 19,
+col = "grey", cex = 1.2, xlab = "Mean Tree diameter, cm",
+ylab = expression(paste("Biomass Mg ", ha^-1)))
+abline(lm(BM ~ TD), col = "red", lwd = 2)
+#Check variance between two data sets biomass and diameter
+sd(TD)/sd(BM)
+cor1 <- cor.test(TD, BM)
+cor1
+#Now lets do linear regression on mean plot diameter vs plot biomass
+#Tree biomass is the dependent variable and mean tree diameter is independent
+lm1 <- lm(BM ~ TD, data = TreePlots)
+anova(lm1)
+summary(lm1)
+#Let's run diagnostics!
+par(mfrow=c(2,2))
+plot(lm1)
+```
+#2. mean tree height vs. wood density.
+The null hypothesis is that mean tree height has no significant relationship to mean wood density. The alternative is that there is a linear relationship between mean tree height and wood density. I first examined the data by plotting the mean tree diameter vs biomass and there doesn't appear to be a linear correlation between the two parameters. A correlation test further showed that the two variables are somewhat correlated at r = 0.48 and p < 0.001. The ratio of variance was also checked and found to be quite large. Overall, this data is probably not something I would proceed with for this type of analysis. But that's the assignment, so I did it anyway. 
+
+Next I ran a linear regression in which tree height is the dependent variable and wood diameter is the independent variable. The results indicated that mean tree diameter has statiscially significant effects on plot biomass (p < 0.001).  points. (Every one increment (g/cm3) of mean tree wood density increases the tree height by 11.242 meters.) Residual standard error was 1.5, which indicates that the model fits the data quite well. The multiple r squared was 0.23, which indicates that a fairly small amount of variance in tree height is explained by wood density. 
+
+The diagnostics looked fairly good. QQ plot indicates that data are fairly normal and residuals appear to be a random "cloud." Overall, while it does appear that there is a correlation between tree height and wood density, it does not appear that there is a strong enough relaitonship to imply causation. Other factors should certainly be investigated to ecplain more of the variance in tree heigh.
+```{r}
+
+TreePlots <- read.csv("TreePlots.csv")
+HT <- TreePlots$mH.m
+WD <- TreePlots$mWD.g.m3
+#How do the data look?
+plot(WD, HT, lwd = 2, las = 1, pch = 19,
+col = "grey", cex = 1.2, xlab = "Mean Wood Density, g/m3",
+ylab = expression(paste("Mean Tree Height, m", ha^-1)))
+abline(lm(HT ~ WD), col = "red", lwd = 2)
+#Check variance between two data sets biomass and diameter
+sd(HT)/sd(WD)
+#Check for correlation
+cor2 <- cor.test(HT, WD)
+cor2
+#Now lets do linear regression on mean plot diameter vs plot biomass
+#Tree height is the dependent variable and wood density is independent
+lm2 <- lm(HT ~ WD, data = TreePlots)
+anova(lm2)
+summary(lm2)
+#Let's run diagnostics!
+par(mfrow=c(2,2))
+plot(lm2)
+```

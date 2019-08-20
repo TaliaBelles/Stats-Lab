@@ -1,0 +1,84 @@
+---
+title: 'Environ 710 Lab 4: Confidence Intervals'
+fontsize: 11 pt
+date: "9.26.18"
+output:
+  html_notebook: default
+  pdf_document: default
+subtitle: Natalia Neal-Walthall
+---
+
+#Problem 1
+Turn in the code for your q-q plot function, myqqplot. Include the following: (a) a graph of the q-q plot from the Death data using myqqplot, (b) a graph of the q-q plot from the Death data using qqnorm and qqline. Write a short paragraph describing how q-q plots are created in your own words.
+
+```{r}
+AfrPlots <- read.csv("AfrPlots.csv")
+Death <- sort(AfrPlots$Dead) 
+myqqplot <- function(x) {
+perc <- c()
+for (i in 1:length(x)){
+perc [i] <-(i/(length(x)+.0001))
+}
+}
+md <- mean(Death)
+sdd <- sqrt(var(Death))
+myqqplot(Death)
+norm <- dnorm(Death, mean = md, sd = sdd)
+Theoretical_Quantiles <- qnorm(perc/100, mean = 0, sd = 1)
+plot(norm)
+#Sample_Quantiles <- -qnorm(Death, mean = md, sd = sdd )
+Theoretical_Quantiles
+Sample_Quantiles
+#plot(Theoretical_Quantiles,Sample_Quantiles, main = "My Q-Q Plot")
+abline(lm(Sample_Quantiles ~ Theoretical_Quantiles))
+qqnorm(Death)
+qqline(Death)
+```
+Q Q Plots (Quantile-Quantile plots) are plots of two quantiles against each other, in this case theoretical vs observed quantiles for the same data set. Q Q plots provide a graphical method to determine if two sets of data come from the same type of distribution. If the two data sets come from a common distribution, the points will be clearly correlated through the reference line. To construct a Q Q plot, data must first be ordered from smallest to largest. Then, percentiles are calculated with n+(a little more) values to ensure that the largest percentile does not equal 100. Last, the z value for each percentile is calculated. These values are then plotted against the cut off points for a normal distribution to compare.
+
+
+
+#Problem 2
+Using the datafile, epa2012.csv, evaluate the data for highway gas mileage. Assess whether highway gas mileage is normally distributed, doing the following: (a) plot a histogram of the data with the curve reflecting the expected normal distribution of the data, (b) plot the q-q plot with the one-to-one line, (c) create a boxplot of the data, and (d) calculate the skewness and kurtosis of the data. Do this for both the raw data and log-transformed data. Which looks more normally distributed? Calculate the mean and confidence interval of the data set that you think is mostly likely normally distributed.
+
+```{r}
+read.csv("epa2012.csv")
+```
+```{r}
+mpg <- (epa2012$hwy_mpg)
+logTrans <- log(mpg)
+m <- mean(mpg)
+stdev <- sqrt(var(mpg)) 
+mt <- mean(logTrans)
+stdevt <- sqrt(var(logTrans))
+par(mfrow=c(3,2))
+hist(mpg, freq = FALSE)
+curve(dnorm(x, mean=m, sd= stdev), 
+      col="darkblue", lwd=2, add=TRUE, yaxt="n")
+hist(logTrans, freq = FALSE, main = "Histogram of Log Transformed Data")
+curve(dnorm(x, mean=mt, sd= stdevt), 
+      col="darkblue", lwd=2, add=TRUE, yaxt="n")
+qqnorm(mpg, main = "Q-Q Plot of MPG")
+qqline(mpg)
+qqnorm(logTrans, main = "Q-Q Plot of Log Transformed Data")
+qqline(logTrans)
+boxplot(mpg, main = "Box Plot of MPG")
+boxplot(logTrans, main = "Box Plot of Log Transformed Data")
+```
+```{r}
+library(e1071)
+s1 <- skewness(mpg)
+s2 <- skewness(logTrans)
+k1 <- kurtosis(mpg)
+k2 <- kurtosis(logTrans)
+paste("skewness of mpg data = ", format(s1, nsmall = 3))
+paste("skewness of log transformed data =", format(s2, nsmall = 3))
+paste("kurtosis of mpg data =", format(k1, nsmall = 3))
+paste("kurtosis of log transformed data =", format(k2, nsmall = 3))      
+```
+Based on a visual inspection of the graphs produced, the log transformed data appears to be more normal. This was confimed through the much smaller values calculated for skewness and kurtosis, indicating that the data are more symmetrical and bell shaped, as one would expect from a normal distribution. 
+```{r}
+paste("mean of log transformed data =", mt)
+qn <- qnorm(.025, mt, stdevt)
+paste("the 95% confidence interval for the log transformed data is", format(mt, nsmall = 2), "+/-", format(qn, nsmall = 2))
+```

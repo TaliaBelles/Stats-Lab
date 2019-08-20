@@ -1,0 +1,99 @@
+---
+title: "Environ 710 Lab 12"
+author: "Natalia Neal-Walthall"
+date: "11.26.18"
+output:
+  word_document: default
+  html_notebook: default
+subtitle: Logistic Regression
+---
+
+
+####Introduction:
+This analysis investigates whether increased lung cancer is associated with birdkeeping. The variables of interest are age (AG), years the individual has smoked (YR), and the indicator variable for birdkeeping (BK). The data frame was modified to include the variable (SV) where a value of 1 indicates that the  individual had lung cancer and a value of 0 indicates that the individual did not have lung cancer. The null hypothesis of this study is that birdkeeping has no significant effect on lung cancer after accounting for the effects of age and years the individual smoked. The alternative hypothesis is that birdkeeping has a significant effect on lung cancer rates as determined by a generalized linear model relationship. To test this hypothesis, data from 147 individuals was collected. These data include some who had lung cancer and (negative controls) that did not.
+
+####Methods
+
+Age and years smoking are both continuous data points, while birdkeeping was a factor variable. The lung cancer data were converted into a binary response variable: 1 = lung cancer and 0 = no lung cancer. Relationships between factors were first examined with ggplots to assess corellations between variables. Based on these results, it does not appear that colinearity is a concern for this data set. The data were then analyzed with a bionomial logistic regression, first creating a saturated model with all factors and interactions included. Models were then created with each interaction removed and compared with the Likelihood Ratio Test (LRT) and AIC. The likelihood ratio test uses a chi squared test statistic to assess the difference in the deviance of the simpler model to the more complex model; if the statistic is significant then the more complex model better predicts the response data. Similarly, models with AIC values within (2) of one another are not significantly different.  In all cases, the interactions did not appear to be significant based on minimal change to residual model deviance and AIC. As such, all interactions were removed before examining main effects. As before, models were created by removing one main effect at a time and results were compared with the LRT and AIC. Lastly, the final model was assessed with chi squared test of deviance and McFadden’s pseudo R2 to assess the goodness of fit and predictive ability of the model. 
+
+
+####Results
+The results indicate that years smoking and bird keeping were both significant, but age was not. Therefore, the minimum adequate model is:
+  LungCancer ~ YR + BK 
+With the coefficients provided by the model:
+  LungCancer = -1.70 +.058(YR) + 1.48 
+The coefficients provided by glm() are log-odds. By taking the anti-log of the coefficients, we can interpret them as odds ratios:
+  Odds(Lung Cancer) = .182 + 1.06(YR) + .228 (If there is a bird)
+Last, the inverse logit function may be used to interpret coefficients in terms of probabilities:
+  Probability(Lung Cancer) = .153 + .514(Years Smoked) + .186 (If there is a bird)
+  
+Examining the model with coefficients in terms of odds, the intercept implies that the odds of an individual who is 0 years old and does not have birds developing lung cancer is .182. This is not meaningful, in part because this age value is well outside the range of data used to create the model. Intercept is therefor not a useful parameter. The model also implies that odds of developing lung cancer increase by 6% per year smoked and 23% if the individual keeps birds. For a bird keeper who has smoked for 32 years, the probablity of developing lung cancer is 54% based on this model. This decreases to 21% if the same individual does not keep birds. Thus, we can reject the null hypothesis and say there is a strong binomial logistic regression relationship of lung cancer to bird keeping. However, it should be noted that the results of the chi squared test of deviance and McFadden’s pseudo R2 indicate that while the model fits the data reasonable well, it does not explain a large portion of the variance. It is therefore likely that an important predictive factor has not been included in this analysis. However, even when all other factors found in the data set were added to analysis, the model was not improved.        
+
+ 
+
+  
+
+
+```{r, echo = F, eval = T}
+require(Sleuth3)
+sdat<- case2002
+sdat$SV <- ifelse(sdat$LC == "LungCancer", 1, 0)
+ggpairs(sdat)
+#Does not appear that any of the variables are highly corellated
+```
+```{r, echo = F, eval = T}
+#First, examine the saturated model vs. models with one interaction removed.
+lr1 <- glm(SV ~ AG + YR + factor(BK) + AG:YR + AG:factor(BK) + YR:factor(BK), family=binomial, data=sdat) 
+lr2 <- update(lr1, ~.-YR:factor(BK))
+lr3 <- update(lr1, ~.-AG:factor(BK))
+lr4 <- update(lr1, ~.-AG:YR)
+anova(lr1, lr2, lr3, lr4, test = "Chisq")
+#Based on the results, it does not appear that interactions have an effect. These will be removed. 
+lr5 <- update(lr2, ~.-AG:factor(BK))
+anova(lr1, lr5, test = "Chisq")
+#Great. OK. That's definitely a good start. What if we remove main effects?
+lr6 <- update(lr5, ~.-AG)
+lr7 <- update(lr5, ~.-YR)
+lr8 <- update(lr5, ~.-factor(BK))
+anova(lr1, lr5, test = "Chisq")
+anova(lr1, lr6, test = "Chisq")
+anova(lr1, lr7, test = "Chisq")
+anova(lr1, lr8, test = "Chisq")
+AIC(lr1, lr5, lr6, lr7, lr8)
+#It appears that BK and YR are significant. AG is not
+lr9 <- glm(SV ~ YR + factor(BK), family=binomial, data=sdat) 
+anova(lr1, lr9)
+summary(lr9)
+summary(lr1)
+lr10 <- glm(SV ~ YR + factor(BK) +factor(FM) + factor(SS) + CD, family = binomial, data = sdat)
+summary(lr10)
+```
+
+```{r, echo = F, eval = T}
+plot(jitter(sdat$YR), sdat$SV, las=1, pch=21, cex=1.2, bg="grey", xlab = "Years Smoking", ylab="Probability of Lung Cancer")
+legend(x= "topleft", y = "topleft", legend=c("Bird Owner", "Non-Bird Owner"), fill=c("blue", "red"), cex=0.8)
+x <- seq(min(sdat$YR), max(sdat$YR), length = 100) 
+curve(expr = inv.logit(lr9$coef[1] + lr9$coef[2]*x +lr9$coef[3]), add=T, lwd=2, col="red")
+curve(expr = inv.logit(lr9$coef[1] + lr9$coef[2]*x), add=T, lwd=2, col="blue")
+```
+```{r, echo = F, eval = T}
+exp(coefficients(lr9))
+#inv.logit(coefficients(lr9))
+ cf <- (coefficients(lr9)) 
+ #We can then calculate survival odds for a specific age. 
+#inv.logit(cf[1] + cf[2]*32 + cf[3]*1)
+#inv.logit(cf[1] + cf[2]*32)
+```
+
+```{r, echo = F, eval = T}
+ lr9$deviance/lr9$df.residual
+pchisq(lr9$deviance, lr9$df.residual, lower=F)
+require(pscl)
+lr0 <- glm(SV ~ 1, family=binomial, data=sdat)
+pseudoR2 <- 1-logLik(lr9)/logLik(lr0)
+pR2(lr9)
+```
+
+
+```{r ref.label=knitr::all_labels(), echo = T, eval = F}
+```

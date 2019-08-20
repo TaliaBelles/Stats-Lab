@@ -1,0 +1,140 @@
+---
+title: "Three Problems"
+author: "John Poulsen"
+date: '`r format(Sys.time(), "%B %d, %Y")`'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = F, warning = F)
+require(boot)
+```
+
+See the three applied statistics problems. Try to finish two of them in class, working in groups. 
+
+# Problem 1
+To assess the effect of large doses (grams) of Vitamin C on incidence of colds, a large number of volunteers (>2000) were randomly given tablets to take daily, without knowing the dose of Vitamin C. The data include: vitamin c dose (`Dose`), total number of volunteers (`Number`), and number of volunteers witout the illness (`WithoutIllness`). 
+
+
+Is there evidence that the chances of having a cold are associated with the dose of Vitamin C? 
+
+To download the data, load the `Sleuth3` package and the file `ex2113`.
+
+```{r}
+require(Sleuth3)
+dat <- ex2113
+```
+
+```{r results = 'hide', echo = F}
+	vitc <- glm(cbind(WithoutIllness, Number - WithoutIllness)~Dose,
+	            family=binomial, data = dat)
+	 exp(coef(vitc))
+
+```
+
+What does the intercept represent in the model?
+How does dose of Vitamin C affect the odds of getting a cold?
+
+# Problem 2
+
+In Arahazar upazila, Bangladesh, researchers labeled wells with their level of arsenic and an indication of whether the well was “safe” or “unsafe.”  People using unsafe wells were encouraged to switch.  After several years, the researchers returned to determine whether each household using an unsafe well had changed to a safe well.
+
+`switch`: whether or not the household switched from an unsafe well to a safe `well`: no or yes
+`arsenic`: the level of arsenic contamination in the household's original well, in hundreds of micrograms per liter
+`dist`: distance in meters to the closest known safe well
+`educ`: education in years of the head of the household.
+
+Download the data from Sakai: 
+
+```{r, results = 'hide'}
+
+wells <- read.table ("wells.txt")
+
+```
+
+```{r, results = 'hide', echo = F}
+ well1 <- glm(switch ~ dist, family = binomial, data = wells)
+  wells$dist100 <- wells$dist/100
+   well2 <- glm(switch ~ dist100, family = binomial, data = wells)
+
+with(wells, plot(dist100, jitter(switch, 0.1), cex = 0.1, pch = 20, 
+                 xlab = "Distance, 100 m", ylab = "Probability of switching"))
+ x <- with(wells, seq(min(dist100), max(dist100), length = 100))
+  curve(inv.logit(cbind(1, x) %*% coef(well2)), add = T, col = "red", lwd = 2)
+
+# Fuller models
+well3 <- glm(switch ~ dist100*arsenic + educ, family = binomial, data = wells)  
+ well4 <- update(well3, .~. -dist100:arsenic) 
+ 
+anova(well3, well4, test = "Chisq") 
+
+# Deviance test
+pchisq(deviance(well4), well4$df.residual, lower = F)
+
+#pseudo R2
+require(pscl)
+pR2(well4)
+
+```
+
+1. First, model the relationship between `switch` and `dist`. Note that the effect of distance is very small. Rescale the `dist` to make more sense. 
+
+2. Graph the effect of distance on the probability of switching wells.  
+
+3. Fit the model, `switch ~ dist * arsenic + educ`. What is the minimum adequate model? What is the goodness of fit?
+
+# Problem 3
+In a study on horseshoe crabs, each female horseshoe crab had a male crab attached to her in her nest.  The study investigated factors that influence whether the female crab had any other males, called satellites, residing near her.  Explanatory variables investigated include:
+
+- `Sa`: the number of satellite males
+- `C`: female crab’s color
+- `S`: spine condition
+- `Wt`: weight (of the female)
+- `W`: carapace width
+
+```{r results = 'hide', echo = F}
+crab <- read.table("crab2.txt")
+ crb1 <- glm(Sa ~ W, data = crab, family = poisson(link = log))
+  summary(crb1)
+ pchisq(deviance(crb1), crb1$df.residual,lower = F)
+ 
+ crb2 <- glm(Sa ~ W + factor(C), data = crab, family = poisson(link = log))
+ 
+ anova(crb1, crb2, test = "Chisq")
+ AIC(crb1, crb2)
+ 
+ plot(x = crab$W, y = crab$Sa, xlab = "Width (cm)", ylab = 
+        "Number of satellites", panel.first = grid(col = "gray", 
+                                                  lty = "dotted"))
+
+  curve(expr = exp(crb1$coefficients[1]+crb1$coefficients[2]*x), 
+        col = "red", add = TRUE, lty = 2, lwd = 2)
+
+ plot(x = crab$W, y = crab$Sa, xlab = "Width (cm)", ylab = 
+        "Number of satellites", panel.first = grid(col = "gray", 
+                                                  lty = "dotted"))
+ x <- with(crab, seq(min(W), max(W), length = 100))
+
+  curve(exp(cbind(1, x, 0, 0, 0) %*% coef(crb2)), 
+        col = "grey", add = TRUE, lty = 2, lwd = 2) 
+  
+   curve(exp(cbind(1, x, 1, 0, 0) %*% coef(crb2)), 
+        col = "red", add = TRUE, lty = 2, lwd = 2)  
+
+  curve(exp(cbind(1, x, 0, 1, 0) %*% coef(crb2)), add = T, 
+        col = "darkblue", lwd = 1) 
+
+  curve(exp(cbind(1, x, 0, 0, 1) %*% coef(crb2)), add = T, 
+        col = "darkgreen", lwd = 1) 
+
+
+```
+
+Model the effects of carapace width on number of satellites. What is the effect of `W`? Does the model fit the data well?
+
+Add `C` to the model. Does it make the model fit better?
+
+Plot the effect of `W` on the number of satellites, `Sa` at two different levels of color.
+
+
+

@@ -1,0 +1,82 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+dpois(0, 5)
+dpois(1, 5)
+dpois(2, 5)
+dpois(3, 5)
+dpois(4, 5)
+dpois(5, 5)
+dpois(6, 5)
+dpois(7, 5)
+dpois(8, 5)
+dpois(9, 5)
+dpois(10, 5)
+
+```
+```{r}
+pbinom(2, 6, .7)
+```
+```{r}
+pnorm(3.5, 3.8, .2)
+pnorm(3.5, 3.8, .2/2)
+```
+```{r}
+pnorm(25, 10)
+```
+```{r}
+#calculating z score
+(3.5 - 3.8)/.2
+pnorm(-1.5, mean=0, sd=1)
+(3.5 - 3.8)/.1
+pnorm(-3, mean=0, sd=1)
+1- pnorm(60, mean = 50, sd = 13.45)
+#Confidence Intervals
+750 - qnorm(.025, mean=750, sd = 16)
+750 - qnorm(.025, mean=750, sd = 180/sqrt(15))
+```
+```{r}
+#predicting t crit
+qt(0.05, df = 11)
+qt(.025, df = 29)
+qt(.1, df = 17)
+#calculating probability of t
+pt(-2.45, df = 11)
+```
+```{r}
+#calculating beta 
+#find the z crit under the null distribution
+Zcrit <- qnorm(0.95, 1496, 129/sqrt(50))
+#find probability of overlapping region in real distribution (CDF)
+beta <- pnorm(Zcrit, 1532, 129/sqrt(50))
+#power is everything in the real distribution that doesn't overlap
+pwr <- 1-beta
+Zcrit
+beta
+pwr
+```
+binomial conditions
+• the trials must be independent
+• the number of trials, n, must be fixed
+• each trial outcome must be classified as a success or failure
+• the probability of success, p, must be the same for each trial
+
+conditions for CLT:
+Independence: sampled observations must be independent
+random sample/assignment
+if sampling without replacement, n < 10% of the population
+Sample size/skew: either the population is normal, or if the distribution is skewed, the sample size is large (n > 30)
+
+regardless of the parent population…
+
+#1: the mean of the population of means is always equal to the mean of the parent population
+#2: the standard deviation, s, of the population of means is always equal to the standard deviation of the parent population, σ,  divided by the square root of the sample size
+#3: the distribution of means will approximate a normal distribution as the sample size, n, of samples increases
+
+
+
+
+```

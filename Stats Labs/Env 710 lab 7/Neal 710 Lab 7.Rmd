@@ -1,0 +1,82 @@
+---
+title: "Env. 710 HW 8"
+author: "Talia Neal"
+date: "10.25.18"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+subtitle: More Anova Models
+---
+
+
+
+```{r, echo = FALSE, eval = TRUE }
+salty <- read.csv("salt.csv")
+salty <- with(salty, data.frame(obs, salt=factor(salt), block=factor(block), biomass=log(biomass)))
+cols <- c("darkblue", "darkred", "green", "yellow")
+with(salty, barplot(tapply(biomass, list(block, salt), mean),
+ylim =c(0,35), beside = T, col = cols, las=1, ylab = c("Biomass"), cex.axis = 0.8, xlab = c("Salt Dose"), cex.names = 0.8))
+labs <- c("Block 1", "Block 2", "Block 3", "Block 4")
+legend(2.3, 35, labs, fill = cols, cex = 0.8)
+```
+```{r, echo = FALSE, eval = TRUE }
+#what does it look like if I treat it as ANOVA with fixed effects from blocking?
+mod2 <- lm(biomass ~ factor(salt) + factor(block), data = salty) 
+anova(mod2)
+#It does appear that salt has an effect, but blocking appears to as well
+#This model will be treated as an ANOVA with random effects from blocking
+length(salt$obs)/6
+#only 4 samples per block isn't ideal...
+require(lme4)
+mod1 <- lmer(biomass ~ salt + (1|block), data = salty)
+anova(mod1) 
+summary(mod1)
+#Hmmmmm....ok. Some of these things look significant. Is this data good for ANOVA?
+ par(mfrow=c(2,2))
+ plot(mod2)
+ #Actually...this doesn't look great. Looks normal...but those scatter plots look kiiiiinda linear
+ #Went back and log transformed biomass. Looks more random. Gonna go with that. 
+```
+```{r, echo = FALSE, eval = TRUE }
+#ok. Looks like there's a difference. What's actually different?
+require(emmeans)
+require(lmerTest)
+require(multcomp)
+plot(summary(glht(mod1, linfct = mcp(salt = "Tukey"))))
+```
+#Problem 2
+```{r, echo = FALSE, eval = TRUE }
+scales <- read.csv("ScaleThickness.csv")
+scales <- with(scales, data.frame(X, thick, supp=factor(supp), dose=factor(dose)))
+cols <- c("darkblue", "darkred")
+with(scales, barplot(tapply(thick, list(supp, dose), mean),
+ylim =c(0,35), beside = T, col = cols, las=1, ylab = c("Scale Thickness"), cex.axis = 0.8, xlab = c("Supplement Dose"), cex.names = 0.8))
+labs <- c("Vitamin B", "Zinc")
+legend(2.3, 35, labs, fill = cols, cex = 0.8)
+```
+```{r, warning=FALSE,echo = FALSE, eval = TRUE}
+mod4 <- lm(thick ~ supp + dose + supp:dose, data = scales )
+anova(mod4)
+summary(mod4)
+#doesn't seem right. Where is vit b? where is .5 dose?? Dunno what's happening here, but I asked in lab and Taylor said this is how the solutions looked as well. 
+mod0 <- aov(thick ~ supp + dose + supp:dose, data = scales) 
+summary(mod0)
+```
+```{r, echo = FALSE}
+ par(mfrow=c(2,2))
+ plot(mod0)
+
+```
+```{r, echo = FALSE, eval = TRUE }
+require(emmeans) 
+require(lmerTest)
+require(multcomp)
+par(mfrow=c(1,2))
+plot(summary(glht(mod0, linfct = mcp(supp = "Tukey"))))
+plot(summary(glht(mod0, linfct = mcp(dose = "Tukey"))))
+```
+```{r ref.label=knitr::all_labels(), echo = T, eval = F}
+```
+
+

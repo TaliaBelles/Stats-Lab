@@ -1,0 +1,116 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+##Factorial Design
+```{r}
+#Learning about factorial design -> load files, check that supplement and diet are factors, see how many levels each factor has
+feed <- read.csv("Growth.csv", header = TRUE)
+sapply(feed, class)
+levels(feed$supplement)
+levels(feed$diet)
+#visualize data by plotting as a box plot
+par(mar = c(5, 4, 0.5, 2))
+with(feed, boxplot(gain ~ diet + supplement, las = 1,
+ylab = c("Weight gain, pounds"), xaxt = "n"))
+axis(1, labels = FALSE, tick = F)
+lab1 <- rep(levels(feed$supplement), 3)
+lab2 <- rep(levels(feed$diet), 4) 
+lab2 <- substring(lab2, 1, 2)
+labels <- paste(lab1, lab2, sep = ".")
+text(x = seq_along(labels), y = par("usr")[3] - 0.5, srt = 45, adj = 1, labels = labels, xpd = TRUE, cex = 0.7)
+mtext("Supplements", adj = 0.5, line = -27)
+#visualize data by plotting as bar graph 
+cols <- c("darkblue", "darkred", "darkgreen")
+with(feed, barplot(tapply(gain, list(diet, supplement), mean),
+ylim =c(0,35), beside = T, col = cols, las=1, ylab = c("Weight gain, pounds"), cex.axis = 0.8, xlab = c("Supplements"), cex.names = 0.8))
+labs <- c("Barley", "Oats", "Wheat") 
+legend(2.3, 35, labs, fill = cols, cex = 0.8)
+```
+```{r}
+#running a factorial anova with aov. * specifies that we want estimates for the main effects of each level of diet and supplement and the interaction between diet and supplement
+aov(gain ~ diet*supplement, data = feed)
+
+mod0 <- aov(gain ~ diet + supplement + diet:supplement, data = feed) 
+summary(mod0)
+mod0a <- lm(gain ~ diet + supplement + diet:supplement, data = feed)
+anova(mod0a)
+
+# Based on the results, it doesn't look like there is an interaction between diet and feed, plot to check
+with(feed, interaction.plot(diet, supplement, gain, col=c(1,2,3,4), las = 1, cex = 0.9))
+#The consistent decline in weight gain from barley to oats to wheat demonstrates the significance of the main effect of diet. Similarly, the separation of the lines for supplement also suggests a difference along that main effect. The lines are parallel to each other, indicating no interaction. 
+```
+```{r}
+#based on the above, the anova can be run without considering interaction
+ mod3 <- aov(gain ~ diet + supplement, data = feed) 
+summary(mod3)
+#Based on the high F value and very low P value, it appears that diet is the main affect. But which diets are actually different?
+require(graphics)
+TukeyHSD(mod3, "diet", ordered = TRUE)
+plot(TukeyHSD(mod3, "diet"))
+#Differences are significant between each of the diets
+
+```
+##Block Design - blood samples sent to four labs, want to compare effects of antibiotics, but must account for possible effects of running in different labs
+```{r}
+lab <- c(rep(1:4, each = 4)) 
+antibiotic <- rep(c(1:4), 4)
+results <- (c(9.3, 9.4, 9.6, 10, 9.4, 9.3, 9.8, 9.9, 9.2, 9.4, 9.5, 9.7, 9.7, 9.6, 10, 10.2))
+dlabs <- data.frame(lab = factor(lab), antibiotic = factor(antibiotic), results)
+#How do results compare if only antibiotics are considered?
+mod3 <- aov(results ~ antibiotic, data = dlabs)
+summary(mod3)
+#Looks sugnificat. What if blocking is considered?
+mod4 <- aov(results ~ factor(antibiotic) + factor(lab), data = dlabs) 
+summary(mod4)
+#still looks significant...but so does effects of lab. code below treats lab like a random effect (you sould really have 6 samples to do this)
+ mod5 <- aov(results ~ antibiotic + Error(lab), data = dlabs) 
+ summary(mod5)
+```
+
+```{r}
+  #Luckily, results look the same. Next problem-Tukeys HSD doesn't work with random effects. Use lme4 package to examine mixed effects models
+ require(lme4)
+mod6 <- lmer(results ~ antibiotic + (1|lab), data = dlabs)
+anova(mod6) 
+summary(mod6)
+```
+```{r}
+#This also alows us to run post hoc test
+install.packages(lmerTest)
+install.packages(eemeans)
+install.packages("multcomp")
+```
+```{r}
+require(emmeans)
+require(lmerTest)
+require(multcomp)
+summary(glht(mod6, linfct = mcp(antibiotic = "Tukey")))
+```
+##Repeated Measures Design looking at sales in 10 cities before, during, and after an ad campaign
+```{r}
+#read in doc and asign data as factors
+ ad <- read.csv("Sales-2.csv", header=T)
+ad <- with(ad, data.frame(sales, city=factor(city),
+campaign = factor(campaign), time = factor(time)))
+#run an anova without repeated measures(factorial design)
+ad
+an1 <- lm(sales ~ time*campaign, data = ad)
+summary(an1)
+#Nothing looks significant. Use the phia pkg to look at interactions.
+require(phia) 
+plot(interactionMeans(an1), las = 1)
+with(ad, tapply(sales, list(time), mean))
+with(ad, tapply(sales, list(campaign), mean))
+```
+```{r}
+#ok. Looks interesting. Let's redo anovo with repeated measures
+require(lme4)
+mod8 <- lmer(sales ~ campaign * time + (1|city/campaign), data = ad) 
+anova(mod8)
+summary(mod8)
+```
+
+
+
+

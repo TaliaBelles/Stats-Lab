@@ -1,0 +1,181 @@
+---
+title: "710 Lab 10"
+author: "Talia Neal"
+date: "11.7.18"
+output:
+  html_notebook: default
+  pdf_document: default
+subtitle: multiple regression
+---
+##Problem 1
+
+####*Introduction:*
+The goal of this study is to determine which factors contribute most to variance in tree plot biomass. To investigate which factors are most useful in predicting biomass of trees, information on tree height, wood density, basal area, wood diameter, and trees falls (broken down by tree size) were collected and analyzed with multiple linear regression modeling.. The null hypothesis for the saturated model is that there is no signficant relationship of plot biomass to any of the above variables. The alternative hypothis is that there is a signficant linear relationship between plot biomass and at least one of the 5 variables/interactions. After examination of the results obtained from the saturated model, parameters appearing to be less significant were considered for removal in order to obtain the minimum adequate model. For each of these tests, the null hypothesis is that the minimum model is adequate and the alternative hypothesis is that it is not adequate. 
+
+####*Methods:*
+The 70 tree plots include the variables: (1) plot biomass (AGBH.Mg.ha),(2) mean tree diameter (mDBH.cm),(3) mean height (mH.m), (4) mean wood density (mWD.g.m3), (5) mean basal area (mBA.cm2), and (6) tree falls in the plot (Tree.Fall). All variables except for tree fall are continuous data measurements of trees. Tree falls is a categorical data set broken down into the following: minor, major and rien (large tree, moderate sized tree, no tree fall). 
+
+As a first step, biomass was plotted vs tree diameter, tree height, wood density, basal area, and tree falls. Based on these plots, all of these factors appear to have a potential effect on biomass. A correlation test showed that tree diameter, tree height, and basal area had a strong correlation. Wood density showed a weaker correlation, but not sufficiently low as to exclude it from an initial model. Based on the boxplot of tree falls, it appears that major falls may positively impact plot biomass, which all other fall types have approximately the same effect. This will also be included in the model. A histogram of plot biomass shows that the data is skewed towards lower values. The data were log transformed and re-examined; they appeared to be farther from normal than before and as such the original data will be used in the model. After running the initial saturated model, factors which did not appear to significantly affect biomass were removed one at a time, checking each time to ensure that removal did not substantially reduce the predictive capacity of the model.  
+
+####*Results:*
+
+The results of the saturated model indicated that tree falls and tree height did not appear to be statistically significant (p > .05). As such, the model was first updated to remove falls. This changed the multiple r squared very little (from .5598 to .542), indicating that this was a valid removal. The model was next updated to remove tree height. This changed the multiple r squared from .542 to .533, indicating once again that this was a valid removal. Finally, the model wa updated to remove tree diameter as it also appeared to be insignificant. This removal changed the multiple r squared from .533 to .5328, indicating once again that this was a valid removal. Though tree basal area, and wood density do appear to be significant, additional models were run with these parameters removed to verify their significance. Removal of area and density reduced the multiple r squared by ~.2 and ~.1 respectively, indicating that significantly less variance was explained with the removal of either parameter. Therefore, a reduced model with only basal area and wood density appears to be the minimum adequate model. The diagnostics for this model indicate that the data appear fairly normal and homoscedacity is appropriate. However, there are a couple of points (47 & 50) that do appear to have a good deal of leverage based on the Cooks distance. If these were my actual data I would reexamine those data points. As a final check, collinearity between these two parameters was checked with the variance inflation factor (VIF) and found to be 1.18, indicating a low level of collinearity between the factors. 
+
+The minimum adequate model was found to be: Biomass = -286.67 + 587.6(Density) + .313(Basal Area)
+
+Both wood density and basal area positively impact plot biomass, and all other parameters were found to be insignificant. P values for both factors were well below .05, indicating that they are both highly significant. The multiple r squared for this model is .53, indicating that these two parameters explain around half of the variance in tree plot biomass observed.  
+
+
+```{r, echo = FALSE, eval=TRUE }
+plots <- read.csv("TreePlots-2.csv")
+biomass <-plots$AGBH.Mg.h
+diameter <- plots$mDBH.cm
+height <- plots$mH.m
+density <- plots$mWD.g.m3
+area <- plots$mBA.cm2
+falls <- plots$Tree.Fall
+par(mfrow = c(3,3))
+plot(diameter, biomass)
+plot(height, biomass)
+plot(density, biomass)
+plot(area, biomass)
+plot(falls, biomass, ylab = "biomass", xlab = "Tree Falls")
+```
+```{r, echo = FALSE, eval = TRUE}
+cor.test(diameter, biomass)
+cor.test(height, biomass)
+cor.test(density, biomass)
+cor.test(area, biomass)
+hist(biomass)
+```
+```{r, echo = FALSE, eval = TRUE}
+#base model with log transformed response data. 
+ lm0 <- with(plots, lm(biomass ~ diameter + height + density + area + factor(falls)))
+ summary(lm0)
+ #Based on the results of the saturated model, tree height and falls do not appear to be important
+ #Running with falls removed
+ lm1 <- update(lm0,~.-factor(falls))
+ summary(lm1)
+ #running with height removed
+ lm2 <- update(lm1,~.-height)
+ summary(lm2)
+  #running with diameter removed
+ lm3 <- update(lm2,~.-diameter)
+ summary(lm3)
+ #let's try the other factors
+ #lm4 <- update(lm3, ~.-density)
+ #summary(lm4)
+ #lm3 is the minimum adequate model. Let's look at diagnostics. 
+```
+ 
+ 
+
+
+```{r, echo = FALSE, eval = TRUE}
+  par(mfrow = c(2,2)) 
+  plot(lm3)
+ #The variance inflation factor (VIF) is an index of how much the variance of an estimated regression coefficient increases because of collinearity. A common rule of thumb is that if VIF(βˆ) > 5, then multicollinearity is high
+library(car)
+vif(lm3)
+```
+
+
+```{r, echo = FALSE, eval = TRUE}
+z <- 1
+g <- 500
+x <- density
+coefs1 <- coef(lm3)
+plot(x = density, y = biomass, main = "Effect of Density on Biomass" )
+curve(coefs1[1] + coefs1[2]*x +coefs1[3]*z, add=T, col="red") 
+curve(coefs1[1] + coefs1[2]*x +coefs1[3]*g, add=T, col="blue")
+```
+
+```{r, echo = FALSE, eval = TRUE}
+h<- .5
+x<- area
+plot(x = area, y = biomass, main = "Effect of Basal Area on Biomass" )
+curve(coefs1[1] +coefs1[2]*z + coefs1[3]*x, add=T, col="red")
+curve(coefs1[1] + coefs1[2]*h +coefs1[3]*x, add=T, col="blue")
+```
+
+##Problem 2
+
+####*Introduction*
+
+The goal of this study is to determine which factors contribute most to variance in atmospheric ozone concentration. To investigate which factors are most useful in predicting ozone concentration, measurements for temperature, solar radiation, and wind speed were collected and analyzed with multiple linear regression modeling. The null hypothesis for the saturated model is that there is no signficant relationship of ozone concentration to any of the above variables or their interactions. The alternative hypothis is that there is a signficant linear relationship between ozone concentration and at least one of the 3 variables/interactions. After examination of the results obtained from the saturated model, parameters appearing to be less significant were considered for removal in order to obtain the minimum adequate model. For each of these tests, the null hypothesis is that the minimum model is adequate and the alternative hypothesis is that it is not adequate.
+
+####*Methods:*
+
+These data include the variables: (1) ozone (ozone),(2) solar radiation (rad),(3) temperature (temp), and (4) wind speed wind., All variables are continuous data measurements. 
+
+As a first step, ozone was plotted vs. radiation, temperature, and wind. Based on these plots, wind and temperature show a clear corellation. However, it is unclear if radiation is corellated. A corellation test indicated a corellation of ~.6 for wind and temperate, and ~.3 for radiation. As such, all factors and their potential interactions were included in the saturated model. A histogram of ozone concentration shows that the data is heavily skewed towards lower values. The data were log transformed and re-examined; they appeared to be much closer to a normal distribution than before. Therefore, log transformed ozone concentration data will be used in the model. After running the initial saturated model, factors which did not appear to significantly affect biomass were removed one at a time, checking each time to ensure that removal did not substantially reduce the predictive capacity of the model.  
+
+####*Results:*
+
+The results of the saturated model indicated that none of the interaction terms were significant. They were removed one at a time in order of highest to lowest p value. Removal of radiaiton-temperature interaction resulted in no change in multiple r squared. Removal of the radiation-wind interaction changed the multiple r squared value from .6801 to .679. Removal of the temperature-wind interaction changed the multiple r squared from .679 to .6649. These very small changes indicate that none of the interaction terms are needed in the minimum adequate model. The model with all interaction terms removed indicated that all remaining factors were significant. As a last check, radiation, wind speed, and temperature were all independantly removed to verify that removal of the parameter would significantly impact the model. The removal of wind or radiation decreased the multiple r squared by ~.05 and ~.1, respectively; removing temperature decreased the multiple r squared by ~.2. I therefore chose to remove wind and include only radiation and temperature in the minimally adequate model. The diagnostics for this model indicate that the data appear fairly normal. The residual plots may have some unaccounted for structure, but not so much as to be unacceptable. Point 17 does appear to potentially be a bit of an outlier based on the Cooks distance and could therefore use a verification. As a final check, collinearity between these two parameters was checked with the variance inflation factor (VIF) and found to be 1.09, indicating a low level of collinearity between the factors in the reduced model.
+
+Therefore, the minimum adequate model was found to be: ozone = -1.76 + .0025(radiation) + .0607(temperature)
+
+However, this model is in log units, for ease of use, it may be converted to original scale. This results in the model:
+ozone = .017 + 1.002(radiation) + 1.06(temperature)
+P values for this model were both well below .05, indicating that these two parameters are highly significant. The multiple r squared for the reduced model is .616, indicating that these two parameters explain roughly 60% of variance in atmospheric ozone concentration.
+
+```{r, echo = FALSE, eval = TRUE}
+dat <- read.csv("ozone.data.csv")
+ozone <- dat$ozone
+rad <- dat$rad
+temp <- dat$temp
+wind <- dat$wind
+par(mfrow = c(2,2))
+plot(rad, ozone)
+plot(wind, ozone)
+plot(temp, ozone)
+cor.test(rad, ozone)
+cor.test(temp, ozone)
+cor.test(wind, ozone)
+par(mfrow = c(1,2))
+hist(ozone)
+hist(log(ozone))
+```
+```{r, echo = FALSE, eval = TRUE}
+lm00 <- with(dat, lm(log(ozone) ~ rad + temp + wind + rad:temp + rad:wind + temp:wind))
+summary(lm00)
+#Based on the saturated model, rad:wind is definitely not important. Let's take it out. 
+lm11 <- update(lm00, ~.-rad:temp)
+summary(lm11)
+lm12 <- update(lm11, ~.-rad:wind)
+summary(lm12)
+lm13 <- update(lm12, ~.-temp:wind)
+summary(lm13)
+lm14<- update(lm13, ~.-wind)
+summary(lm14)
+#lm15<- update(lm14, ~.-rad)
+#summary(lm15)
+```
+```{r}
+#lm14 is the minimum adequate model. Let's look at diagnostics. 
+  par(mfrow = c(2,2)) 
+  plot(lm14)
+ #The variance inflation factor (VIF) is an index of how much the variance of an estimated regression coefficient increases because of collinearity. A common rule of thumb is that if VIF(βˆ) > 5, then multicollinearity is high
+library(car)
+vif(lm14)
+```
+```{r, echo = FALSE, eval = TRUE}
+b <- .00001
+c <- 50
+x <- temp
+coefs2 <- exp(coef(lm14))
+coefs2
+plot(x = ozone, y = temp, main = "Effect of Temperature on Ozone Concentration" )
+curve(coefs2[1] + coefs2[2]*b +coefs2[3]*x, add=T, col="red")
+curve(coefs2[1] + coefs2[2]*c +coefs2[3]*x, add=T, col="blue")
+```
+```{r, echo = FALSE, eval = TRUE}
+h<- 100
+x<- area
+plot(x = ozone, y = rad, main = "Effect of Radiation on Ozone Concentration" )
+curve(coefs2[1] +coefs2[2]*x + coefs2[3]*b, add=T, col="red")
+curve(coefs2[1] +coefs2[2]*x + coefs2[3]*h, add=T, col="blue")
+```
+```{r ref.label=knitr::all_labels(), echo = T, eval = F}
+```

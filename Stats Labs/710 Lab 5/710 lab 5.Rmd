@@ -1,0 +1,131 @@
+---
+title: "Environ 710 Lab 5"
+subtitle: "T-tests & Power Analysis"
+author: Natalia Neal-Walthall
+date: 10.3.18
+output: html_notebook
+---
+##Problem 1
+
+A research study was conducted to examine the differences between older and younger adults on perceived life satisfaction. A pilot study was conducted to examine this hypothesis. Ten older adults (over the age of 50) and ten younger adults (between 20 and 30) were given a life satisfaction test (known to have high reliability and validity). Scores on the measure range from 0 to 60 with high scores indicative of high life satisfaction, and low scores indicative of low life satisfaction. The data are presented below. Compute the appropriate t-test.
+
+```{r}
+young <-  c(34, 22, 15, 27, 37, 41, 24, 19, 26, 36)
+old <- c(41, 24, 46, 39, 21, 33, 43, 40, 50, 41)
+qt(.95, df = 18)
+var(young)/var(old)
+t.test(x = young, y = old, alternative = "two.sided", var.equal = TRUE, conf.level = .95 )
+```
+
+These data were analalyzed with a two sample Student's t-test to determine if there is a significant difference in reported life satisfaction between younger and older adults. The null hypothesis is the mean of reported satisfaction between the groups is the same. The alternative hypothesis is that there is a difference in mean reported satisfaction between the groups. Based on an alpha value of .05, my tc was calculated to be 1.73. Based on the results of this test, it does appear that the results were statistically different, though the p-value was borderline. If I made an error it was likely in using a two sided t test rather than a one sample test to see if the higher mean observed in the older group is significant. This would result in overestimating Type 2 `gt error. 
+
+
+##Problem 2
+Using the life satisfaction data, now do the following: (a) calculate the effect size, d, for the study, (b) conduct a power analysis and report the statistical power. Write a sentence explaining what the power tells you.
+
+```{r}
+my = mean(young)
+mo=mean(old)
+pool <- sqrt(((sd(old))^2 + (sd(young))^2)/2)
+d <- (mo-my)/pool
+d
+```      
+```{r}
+library(pwr)
+pwr.t.test(n = 10, d = 1.09, sig.level = 0.05, power = NULL, type = "two.sample", alternative = "two.sided")
+```
+
+The power for this analysis was .635. This is essentially the probability that the null hypothesis will be rejected. 
+
+##Problem 3
+A researcher hypothesizes that electrical stimulation of the lateral habenula will result in decreased food intake (in grams) in rats. Rats undergo stereotaxic surgery and an electrode is implanted in the right lateral habenula. Following a ten-day recovery period, rats (kept at 80% body weight) are tested for the amount of food consumed during a 10-minute period of time both with and without electrical stimulation. The rats are tested under one of the treatments (with or without electrical stimulation), and then tested under the other treatment after a period of rest. Compute the appropriate t-test for the data provided below, and write a brief descriptive paragraph including all relevant information (as in Problem 1).
+
+```{r}
+nostim <- c(18.4, 16.1,  9.2, 32.2, 13.8, 16.1, 27.6, 11.5, 11.5, 18.4, 22.3, 21.1, 16.4, 29.5, 27.9)
+stim <- c(27.6, 16.1,  6.9, 25.3, 18.4, 11.5, 32.2, 16.1, 20.7, 23.0, 24.7, 18.1, 26.5, 23.4, 8.3)
+qt(.95, df = 28)
+var(nostim)/var(stim)
+t.test(x = stim, y = nostim, alternative = "less", var.equal = TRUE, conf.level = .95 )
+```
+
+These data were analalyzed with a one sample Student's t-test to determine if there is a significant difference in rats who received electric stimulation consumed less food than those who did not. The null hypothesis is that there is no difference in food consumption. The alternative hypothesis is that there is rats who received stimulation consumed less. Based on an alpha value of .05, my tc was calculated to be 1.7. Based on the results of this test, it does not apprear that the rats who received stimulation consumed less. 
+
+##Problem 4
+For your Master’s project you have chosen to study whether exposure of Cardinal eggs to direct sunlight increases the mass of the hatchlings. You plan to locate Cardinal nests and open the vegetation around half of the nests (randomly chosen) to increase exposure to sunlight. A previous study on the nesting of the Eastern Bluebird found the effect size to be 0.4.
+What sample size should you aim for to have sufficient power (0.80) to detect a difference? Alter the above power graph to highlight the needs of your project, assuming that the effect size could vary between 0.3 and 0.5 and that your desired statistical power is between 0.60 and 0.80. Remember that your hypothesis is a one-sided test, and so you need to take this into account in your graph. Add a horizontal black line on your power graph that crosses the power curves at the required sample size.
+
+```{r}
+library(pwr)
+pwr.t.test(n = NULL, d = .35, sig.level = .05, alternative = "greater", power = .8 )
+
+```
+```{r}
+# Set the range of effect sizes, d
+d <- seq(from = 0.3, to = 0.5, by = 0.01) 
+nd <- length(d)
+
+# Set the range of power values, p
+p <- seq(from = 0.6, to = 0.8, by = 0.1) 
+np <- length(p)
+
+# Loop over 3 power values and 81 effect sizes to calculate the
+# sample sizes. What does the samsize array contain?
+samsize <- array(numeric(nd*np), dim=c(nd,np))
+for (i in 1:np){ for (j in 1:nd){
+result <- pwr.t.test(n=NULL, d = d[j], sig.level = .05,
+power = p[i], alternative = "greater")
+samsize[j,i] <- ceiling(result$n) }
+}
+
+# Set up the graph
+xrange <- range(d)
+yrange <- round(range(samsize)) 
+colors <- rainbow(length(p))
+plot(xrange, yrange, type="n", xlab="Effect size (d)", ylab="Sample Size (n)", las = 1)
+# Add the power curves and make the graph pretty
+for (i in 1:np){
+lines(d, samsize[,i], type="l", lwd=2, col=colors[i])
+}
+abline(h=100, col = "black")
+abline(v=0, h=seq(0,yrange[2], by = 20), lty=2, col="grey89")
+abline(h=0, v=seq(xrange[1],xrange[2], by = .02), lty=2, col="grey89")
+legend("topright", title="Power", as.character(p), fill=colors)
+```
+To achieve a power of .8, I would choose a sample size of 100 nests. This assumes a slightly conservative effect size of .35 rather than .4. While increasing the sample size is more work and expense, it is clear from the graph that power drops rapidly if the effect size is less than anticipated, so it seems worth the extra effort to better ensure that the results of the study provide strong statistical evidence of the conclusion.
+
+##Problem 5
+Change the power curve graph in the lab text so that it plots the range of statistical power with sample sizes from 10 to 100. Make sure that sample size is on the x-axis and effect size is on the y-axis of your graph. What conclusion can you draw about your ability to conduct experiments with 80% power?
+
+```{r}
+# Set the range of sample sizes, n
+n <- seq(from = 10, to = 100, by = 1) 
+nn <- length(n)
+
+# Set the range of power values, p
+p <- seq(from = 0.6, to = 0.8, by = 0.1) 
+np <- length(p)
+
+# Loop over 6 power values and 90 sample sizes to calculate the
+# effect. 
+samsize <- array(numeric(nn*np), dim=c(nn,np))
+for (i in 1:np){ for (j in 1:nn){
+result <- pwr.t.test(n=n[j], d = NULL, sig.level = .05,
+power = p[i], alternative = "two.sided")
+samsize[j,i] <- (result$d) }
+
+}
+
+# Set up the graph
+xrange <- range(n)
+yrange <- range(samsize) 
+colors <- rainbow(length(p))
+plot(xrange, yrange, type="n", xlab="Sample Siz (n)", ylab="Effect Size (d)", las = 1)
+# Add the power curves and make the graph pretty
+for (i in 1:np){
+lines(n, samsize[,i], type="l", lwd=2, col=colors[i])
+}
+#abline(v=0, h=seq(0,yrange[2], by = 20), lty=2, col="grey89")
+#abline(h=0, v=seq(xrange[1],xrange[2], by = .2), lty=2, col="grey89")
+legend("topright", title="Power", as.character(p), fill=colors)
+```
+To conduct a study with 80% power, it's very difficult to achieve a substantial effect size with greater than n = 40 sample size. 

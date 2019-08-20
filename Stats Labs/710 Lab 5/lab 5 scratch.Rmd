@@ -1,0 +1,44 @@
+---
+title: "Scratch"
+output: html_notebook
+---
+As an example, let’s find the power of a one-tailed t-test, with a significance level of 0.05, an effect size d equal to 0.75, and 25 subjects in each group
+  
+
+```{r}
+library(pwr)
+pwr.t.test(n = NULL, d = .05, sig.level = .05, alternative = "greater", power = .9 )
+
+```
+```{r}
+# Set the range of effect sizes, d
+d <- seq(from = 0.1, to = 0.9, by = 0.01) 
+nd <- length(d)
+
+# Set the range of power values, p
+p <- seq(from = 0.4, to = 0.9, by = 0.1) 
+np <- length(p)
+
+# Loop over 6 power values and 81 effect sizes to calculate the
+# sample sizes. What does the samsize array contain?
+samsize <- array(numeric(nd*np), dim=c(nd,np))
+for (i in 1:np){ for (j in 1:nd){
+result <- pwr.t.test(n=NULL, d = d[j], sig.level = .05,
+power = p[i], alternative = "two.sided")
+samsize[j,i] <- ceiling(result$n) }
+}
+
+# Set up the graph
+xrange <- range(d)
+yrange <- round(range(samsize)) 
+colors <- rainbow(length(p))
+plot(xrange, yrange, type="n", xlab="Effect size (d)", ylab="Sample Size (n)", las = 1)
+# Add the power curves and make the graph pretty
+for (i in 1:np){
+lines(d, samsize[,i], type="l", lwd=2, col=colors[i])
+}
+abline(v=0, h=seq(0,yrange[2], by = 100), lty=2, col="grey89")
+abline(h=0, v=seq(xrange[1],xrange[2], by = .02), lty=2, col="grey89")
+legend("topright", title="Power", as.character(p), fill=colors)
+```
+

@@ -1,0 +1,157 @@
+---
+title: "scratch work for 11"
+output: html_notebook
+---
+
+Poisson Regression
+Stops by the NYPD
+We will analyze data on the number of police stops of racial and ethnic minorities. Previous studies have confirmed that police stop minorities more often than Whites relative to their proportion in the population. An alternative interpretation is that stop rates more accurately reflect rates of crimes committed by each ethnic group, or that stop rates reflect elevated rates in specific social areas such as neighborhoods or precincts. Here we look at data from pedestrian stops by the NY Police Department over a 15-month period. We compare stop rates by racial and ethnic groups, controlling for previous race-specific arrest rates.
+The data can be found in the frisks.txt file in Sakai. Let’s rename the third column (past.arrests) to be arrests to make it shorter. Let’s also take out one case where the number of arrests is 0.
+The data columns include: stops (number of police stops), pop (population of precinct), arrests (number of arrests in the precinct in the past year), precinct (identity of the precinct), eth (ethnicity: 1 = Black, 2 = Hispanic, 3 = White), crime (type of crime: 1 = violent, 2 = weapons, 3 = property, 4 = drug). Let’s add arrests.yr, converting arrests into an annual figure instead of a 15-month figure.
+```{r}
+dat <- read.table("frisks.txt", skip = 6, header = T) 
+names(dat)[3] <- "arrests"
+dat <- subset(dat[dat$arrests > 0, ]) 
+dat$arrests.yr <- dat$arrests * 15/12
+```
+Note that the number of police stops are counts of stops, thus it is appropriate to use GLM’s with a Poisson probability distribution.
+Take a look at the data using ggpairs() and summary(). Let’s also take a look at the number of stops by ethnic group, s.eth.
+```{r}
+ s.eth <- with(dat, tapply(stops, list(eth), sum))
+a.eth <- with(dat, tapply(arrests.yr, list(eth), sum))
+s.eth/a.eth
+```
+s.eth seems to suggest that Blacks are stopped more often than Hispanics or Whites. However, when we divide these numbers by the total number of arrests, a.eth, for each of the ethnic groups in the previous year, Hispanics actually have the highest rate of stops, followed by Blacks and Whites.
+First, we fit a model with ethnicity as an indicator:
+```{r}
+ frisk1 <- glm(stops ~ factor(eth), family = poisson, data = dat)
+summary(frisk1)
+``` 
+This model is the equivalent of s.eth above, illustrating the number of stops per ethnic group with Black as the baseline to which Hispanic and White are compared. The coefficients for ethnicities 2 and 3 are both negative, lower than Black that is set to 0.
+We need to add an offset so that the counts can be interpreted relative to some baseline or ‘exposure’. In other words, we want to interpret the results as the rate of stops to real arrests. If this rate is high it might represent racial profiling – stopping people because of their race when their actual crime incidence doesn’t warrant it. In other applications, we could add an offset to account for different levels of effort (e.g. hours of counting birds or plot sizes for counting a rare plant).
+```{r}
+ frisk2 <- glm(stops ~ factor(eth), family = poisson, offset = log(arrests.yr), data = dat)
+summary(frisk2)
+```
+Note that adding the offset changed the coefficient for Hispanics (factor(eth)2) to be positive relative to Blacks, similar to our example above (s.eth/a.eth).
+The two ethnicity coefficients are highly statistically significant, and the difference in deviance between the null model (without eth) and this model is -684, much more than a reduction of 2 in deviance that would be expected if ethnicity had no explanatory power in the model.
+To understand the coefficients, we exponentiate them and interpret them as multiplicative effects.
+```{r}
+(coef <- exp(coefficients(frisk2)))
+```
+The intercept is the prediction if X1 = 0 and X2 = 0, which is the stop rate of Blacks relative to their arrest rate in each precinct. The coefficient of X1 is the expected difference in y (on the logarithmic scale) when ethnicity is Hispanic. Thus, the expected multiplicative increase is
+e0.07 = 1.07
+, or a 7% increase in the rate of stops. The coefficient for X2 is the expected difference in y when ethnicity is
+White: e−0.16 = 0.85, or a 15% decrease in stops.
+Now let’s add the 75 precincts to the model. There may be good reason to treat precinct as a random effect,
+but let’s keep it as a fixed effect here.
+```{r}
+frisk3 <- glm(stops ~ factor(eth) + factor(precinct), family = poisson, offset = log(arrests.yr), data = dat)
+deviance(frisk2)-deviance(frisk3)
+```
+The decrease in deviance from frisk2 to frisk3 of 42,014 is huge – much larger than the decrease of 74 that would be expected if the precinct factor were random noise (74 is the increase in number of parameters in the model, and we would expect a decrease of 1 deviance for each added parameter).
+Therefore, adding precinct has greatly improved the fit of the model to the data. In other words, accounting for precinct explains much of the variability in stops. It makes sense that certain precincts, perhaps lower income precincts, might have higher rates of stops than others. We can also compare the models using AIC.
+```{r}
+AIC(frisk2, frisk3)
+(coef <- exp(coefficients(frisk3)))
+```
+Under the Poisson distribution, the variance equals the mean. If this is true, then the residuals should be independent, each with a mean of 0 and standard deviation 1. Overdispersion is the case where the variance is much greater than the mean. With overdispersion, we expect the residuals to be much larger, reflecting the extra variation beyond what is predicted under the Poisson model. One sign of overdispersion is that the residual deviance is significantly higher than the residual degrees of freedom (which is true of frisk3). We can use the typical residual plots to verify.
+```{r}
+par(mfrow = c(2,2))
+plot(frisk3)
+```
+We can calculate the overdispersion with the following function, ovrdsp, so that you just need to enter the response variable and model.
+```{r}
+ovrdsp <- function(y, fit){
+phi <- sum((y-fit$fitted)^2/fit$fitted)/fit$df.residual 
+cat("overdispersion ratio is", phi, "\n")
+}
+ovrdsp(dat$stops, frisk3)
+```
+An overdispersion ratio of 2 is considered high, so this is out of the ballpark. To handle overdispersion, we can use the quasipoisson “distribution”. This is not really a distribution. Rather, all the regression standard
+ errors are rescaled through multiplication by the square root of the overdispersion the model.
+```{r}
+frisk4 <- glm(stops ~ factor(eth) + factor(precinct), family = quasipoisson, offset = log(arrests.yr), data = dat)
+summary(frisk4)
+coefs4 <- exp(coefficients(frisk4))
+coefs4
+```
+Note that this doesn’t change the coefficients, but increases the standard errors, reduces the statistics, and increases the p-values (making them more conservative). Fortunately, this doesn’t change our main inference, that the rate of stops for Whites is 34.3% lower than Blacks.
+
+Abundance of Salamanders
+Let’s use a dataset from the Sleuth3 package on the abundance of salamanders in relation to forest age and percent forest cover. The question of interest is how does forest age and percent cover affect numbers of salamanders?
+```{r}
+ require(Sleuth3) 
+saldat <- case2202
+attach(saldat)
+```
+Let’s take a look at the number of salamanders in relation to the predictor variables, forest age and percent cover. Note that we add some noise to the X-variable with jitter so that we can see otherwise overlapping data points.
+```{r}
+par(mfrow=c(2,2))
+plot(ForestAge, jitter(Salamanders), las=1,
+pch=21, bg="grey", cex=1.2, ylab = "Salamander Count", xlab = "Forest Age") 
+
+plot(ForestAge, jitter(log(Salamanders+0.1)),
+las=1, pch=21, bg="grey", cex=1.2, ylab = "log(Salamander Count)", xlab = "Forest Age") 
+
+plot(PctCover, jitter(Salamanders), las=1, pch=21, bg="grey",
+cex=1.2, ylab = "Salamander Count", xlab = "Percent Forest Cover")
+
+plot(PctCover, jitter(log(Salamanders+0.1)), las=1, pch=21,
+bg="grey", cex=1.2, ylab = "log(Salamander Count)", xlab = "Percent Forest Cover")
+```
+ There is a rough break in percentage of canopy cover separating closed canopy (>70%) from open canopy (<60%). It may be that mean salamander count only depends on this dichotomy, or more complex mod- els and interactions might be in order. What are the mean numbers of salamanders for open and closed canopy?
+
+```{r}
+mean(Salamanders[PctCover<60])
+mean(Salamanders[PctCover>70])
+```
+Because of the apparent division in cover, we are going to add a categorical variable for closed canopy so that closed and open canopy are modeled separately. Note that we have to remove the attached dataframe and re-attach it so that it includes the new variable, Closed. This is one of the reasons why it is recommended to not attach datasets in the workspace.
+```{r}
+rm(saldat)
+saldat <- case2202
+saldat$Closed <- ifelse(saldat$PctCover>60, 1, 0) 
+attach(saldat)
+```
+Let’s fit a model. We are going to start with a complex model, including quadratic terms and the interaction between Forest Age and Percent Cover.
+```{r}
+glm1 <- glm(Salamanders ~ ForestAge + PctCover + I(ForestAge^2) + I(PctCover^2) + ForestAge:PctCover + factor(Closed) + ForestAge:factor(Closed) + PctCover:factor(Closed) +
+I(ForestAge^2):factor(Closed) + I(PctCover^2):factor(Closed) +
+ForestAge:PctCover:factor(Closed), data = saldat, family=poisson)
+summary(glm1)
+```
+That is a very complicated model. Note that all the coefficients that include Forest Age are not significant. Let’s take Forest Age out, as it looks like it does not help explain salamander counts (this agrees with patterns that we saw when first plotting the data).
+```{r}
+glm2<- glm(Salamanders ~ PctCover + I(PctCover^2) + factor(Closed) + PctCover:factor(Closed) + I(PctCover^2)*factor(Closed),
+data = saldat, family=poisson) 
+summary(glm2)
+```
+Our estimates of the two-way interactions between Cover and PctCover are both statistically significant, so it looks like we have the most reduced model. Let’s check more formally.
+We use the likelihood ratio test (LRT) to compare two models provided the simpler model is a species case of the more complex model (i.e., “nested”). The test is the ratio of two likelihood functions: the simpler model, s, has fewer parameter terms than the complex model, c. The test statistic is distributed as a chi-squared random variable, with degrees of freedom equal to the difference in the number of parameters between the two models.
+```{r}
+anova(glm1, glm2, test="Chisq")
+```
+```{r}
+ par(mfrow=c(2,2)) 
+ plot(glm2)
+```
+ We are concerned about residuals that have values more extreme than -2 or 2, which we seem to have. As a rough goodness-of-fit test, we compare the residual deviance of the reduced model to a chi-square distribution with 41 degrees-of-freedom. It is highly significant, demonstrating that the model does not fit the observed data well.
+```{r}
+ pchisq(glm2$deviance, glm2$df.residual, lower.tail=F)
+```
+There is evidence of overdispersion (variance is much greater than the mean), so we will refit the model with
+quasipoisson.
+```{r}
+glm2$deviance/glm2$df.residual 
+ovrdsp(Salamanders, glm2)
+glm3<- glm(Salamanders ~ PctCover + I(PctCover^2) + factor(Closed) + PctCover:factor(Closed) +
+I(PctCover^2)*factor(Closed), data = saldat, family=quasipoisson)
+summary(glm3)
+```
+The best way to understand this model would be to graph fits of the model to the data for closed and open forests, and over different levels of percent cover. The coefficients by themselves are difficult to understand because there are interactions that include quadratic terms.
+For pedagogical sake, let’s look at a simpler model.
+```{r}
+ glm4 <- glm(Salamanders ~ PctCover, data = saldat, family=quasipoisson)
+summary(glm4)
+```
+ 

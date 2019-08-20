@@ -1,0 +1,107 @@
+---
+title: "Env. 710 HW 8"
+author: "Talia Neal"
+date: "10.25.18"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+subtitle: More Anova Models
+---
+
+
+##Problem 1
+Evaluate the effect of salt on plant biomass growth in 24 experimental vegetation plots (download salt.csv). The assigned treatment (one of 6 levels of salt addition: 10, 15, 20, 25, 30, 35 g m-2) is applied to the soil of a plot and at the end of the experiment the biomass of plants in each plot is measured. The experimental units are grouped into four blocks of six plots each, based on geographic proximity, and the treatments are assigned completely at random within each block. Thus, each treatment occurs exactly once in each block.
+
+Based on a visual examination of the experiment results, it does appear that there are differences among the treatment levels. In addition, there does appear to be an effect from blocking as well; biomass in block 4 appears substantially lower accorss the the board, including negative values for the 30g treatment.
+```{r, echo = FALSE, eval = TRUE }
+salty <- read.csv("salt.csv")
+salty <- with(salty, data.frame(obs, salt=factor(salt), block=factor(block), biomass=log(biomass)))
+cols <- c("darkblue", "darkred", "green", "yellow")
+with(salty, barplot(tapply(biomass, list(block, salt), mean),
+ylim =c(0,35), beside = T, col = cols, las=1, ylab = c("Biomass"), cex.axis = 0.8, xlab = c("Salt Dose"), cex.names = 0.8))
+labs <- c("Block 1", "Block 2", "Block 3", "Block 4")
+legend(2.3, 35, labs, fill = cols, cex = 0.8)
+```
+
+To verify that there were effects from both treatment level and blocking, the data were first analyzed with ANOVA, including blocking as a fixed effect (though, admitedly 4 samples/block is much fewer than ideal). The null hypothesis for analysis is that the mean values for growth are the same for all treatments. The alternative hypothesis is that at least one of the means is different between the treatments. Both parameters resulted in large F values and very small P values, indicating that both parameters must be included. The ANOVA was therefore repeated with random effects from blocking to expand the applicability of the results for salt on plant growth without regard to variaition between growth plots.
+
+After running the analysis, diagnostics were checked to ensure that data were normal and residuals did not appear to have any underlying structure. Unfortunately, it did appear that the residuals were vaguely linear rather than a randomly dispersed cloud. Therefore, the model was rerun with log transformed data to see if there was any improvement to homoschedacity of residuals. There did appear to be an improvement, so the log transformed data was used. The results of the AVNOVA did indicate that there was statistically significant variation in growth among the salt treatments, particularly for the 10 and 30 gram treatment levels. 
+```{r, echo = FALSE, eval = TRUE }
+#what does it look like if I treat it as ANOVA with fixed effects from blocking?
+mod2 <- lm(biomass ~ factor(salt) + factor(block), data = salty) 
+anova(mod2)
+#It does appear that salt has an effect, but blocking appears to as well
+#This model will be treated as an ANOVA with random effects from blocking
+length(salt$obs)/6
+#only 4 samples per block isn't ideal...
+require(lme4)
+mod1 <- lmer(biomass ~ salt + (1|block), data = salty)
+anova(mod1) 
+summary(mod1)
+#Hmmmmm....ok. Some of these things look significant. Is this data good for ANOVA?
+ par(mfrow=c(2,2))
+ plot(mod2)
+ #Actually...this doesn't look great. Looks normal...but those scatter plots look kiiiiinda linear
+ #Went back and log transformed biomass. Looks more random. Gonna go with that. 
+```
+
+ After running the ANOVA, variance was analyzed post-hoc with Tukeys HSD to identify differenced in treatment levels.
+```{r, echo = FALSE, eval = TRUE }
+#ok. Looks like there's a difference. What's actually different?
+require(emmeans)
+require(lmerTest)
+require(multcomp)
+plot(summary(glht(mod1, linfct = mcp(salt = "Tukey"))))
+```
+
+Based on the results of Tukeys HSD as shown above, the following treatment levels to appear to have statistically different mean values for growth:
+20	-	10
+30	-	10
+35	-	10
+20	-	15
+25	-	15
+30	-	15
+35	-	15
+30	-	25
+
+So-salt dose definitely does appear to have an impact on biomass growth, but having no unsalted plots makes it difficult to quantify what effect each treatment level has in a non-relative way. 
+
+
+##Problem 2
+Pangolins are scaly anteaters that inhabit the tropical forests of Asia and Africa and are hunted for their meat and their scales, which are made of hair. A researcher wants to evaluate the effect of diet on the thickness of pangolin scales, with the idea that thicker scales would better protect pangolins from predators. She rears pangolins and provides them with identical diets, but different doses (0.5, 1, 2 milligrams) of supplements (Vitamin B and Zinc). Download the ScaleThickness.csv file from Sakai and analyze the data to determine the potential effects of doses and supplements and whether there is an interaction between the two of them.
+
+Based on a visual examination of the experiment results, it does appear that there are differences among the treatment levels. Increasing dosage of both supplements appears to increase scale thickness. At lower doses, there is a much greater effect from zinc than vitamin B, but this pattern seems to diminish as dose increases. As such, there appears to be a potential interaction between the factors.
+
+```{r, echo = FALSE, eval = TRUE }
+scales <- read.csv("ScaleThickness.csv")
+scales <- with(scales, data.frame(X, thick, supp=factor(supp), dose=factor(dose)))
+cols <- c("darkblue", "darkred")
+with(scales, barplot(tapply(thick, list(supp, dose), mean),
+ylim =c(0,35), beside = T, col = cols, las=1, ylab = c("Scale Thickness"), cex.axis = 0.8, xlab = c("Supplement Dose"), cex.names = 0.8))
+labs <- c("Vitamin B", "Zinc")
+legend(2.3, 35, labs, fill = cols, cex = 0.8)
+```
+To examine the effects from both supplement type and dose, the data were analyzed with ANOVA, including a term for potential interaction between the factors. The null hypothesis for analysis is that the mean values for thickness are the same for all treatments. The alternative hypothesis is that at least one of the means is different between the treatments. Based on the F values, dose appears to have the greatest effect, followed by supplement type, and finally interaction between the two. For some reason my ANOVA table didn't include all of the values. It's missing values all values associated with dose 3 as well as supplement:dose interactions for vitamin B. Based on what it did output, every factor appears to be significant except Zinc-dose 1 interactions.
+```{r, warning=FALSE,echo = FALSE, eval = TRUE}
+mod4 <- lm(thick ~ supp + dose + supp:dose, data = scales )
+anova(mod4)
+summary(mod4)
+#doesn't seem right. Where is vit b? where is .5 dose?? Dunno what's happening here, but I asked in lab and Taylor said this is how the solutions looked as well. 
+mod0 <- aov(thick ~ supp + dose + supp:dose, data = scales) 
+summary(mod0)
+```
+```{r, echo - FALSE}
+ par(mfrow=c(2,2))
+ plot(mod0)
+
+```
+Based on the diagnostics plots, the data were appropriate for analysis with ANOVA. As a last step, I will perform Tukeys HSD to better examine the diferences among treatments. 
+```{r, echo = FALSE, eval = TRUE }
+require(emmeans) 
+require(lmerTest)
+require(multcomp)
+par(mfrow=c(1,2))
+plot(summary(glht(mod0, linfct = mcp(supp = "Tukey"))))
+plot(summary(glht(mod0, linfct = mcp(dose = "Tukey"))))
+```

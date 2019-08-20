@@ -1,0 +1,16 @@
+---
+title: "Test 1 workbook"
+output: html_notebook
+---
+1. 
+```{r}
+dpois(10, lambda = 12)
+dpois(10, lambda = 12) + dpois(3, lambda = 12)
+sum(ppois(2:5, lambda=12))
+qnorm(.95, mean = .9, sd = .07)
+.8 - qnorm(.05, mean=.9, sd = .07/sqrt(25))
+1-pnorm(1.17, 1.1, .18/sqrt(40))
+pnorm(-1.86, mean = 0, sd = 1)
+
+```
+

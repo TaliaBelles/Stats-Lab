@@ -1,0 +1,54 @@
+---
+title: "Environ 710 Test 2"
+author: "Natalia Neal-Walthall"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+##Problem 1
+The datasetbloomcontains information on densities of algae and measurements of sunlight, and nutrients at two categories of water depth,depthcat(s = shallow, d = deep). Algae require warmth, sunlight, and nutrients to grow and reproduce, so they live in the upper 60 to 90 meters (200 to 300 feet) of ocean water.
+
+Hypothesizing that warmer ocean waters resulting from global warming might alter the effects of these factors,researchers sampled algal densities (mg/L) at 20 randomly chosen sites (site: A through T) along the USeastern coast, taking 10 samples at each site. 
+
+For each sample, they measured algal density, sunlight, nutrient load (mg/L), and recorded the depth category. The researchers are interested in the effects of sunlight , nutrients and depth on algal density for the entire coast, not particular sites. In this problem,determine what factors drive algal density on the US eastern coast accounting for variation across sampling sites.
+```{r}
+#Multiple regression analysis w/ site as random effect and no interaction terms. Not checking for assumptions. 
+bloom <- read.csv("~/710 Test 2/Labs/bloom.csv")
+lm1 <- lm(algae ~ nutrients + factor(depthcat), data = bloom )
+summary(lm1)
+library(car)
+vif(lm1)
+```
+```{r}
+at.nutrients <- with(bloom, seq(min(nutrients), max(nutrients), 0.5)) 
+d1 <- 10
+d2 <- 100
+x <- at.nutrients
+coef <- coefficients(lm1)
+with(bloom, plot(nutrients, algae, las = 1, pch = 16, cex = 1.2,
+col = "lightgrey", ylab = "Algae Growth", xlab = "Nutrients"))
+curve(coef(lm1)[1] + coef(lm1)[2]*x + coef(lm1)[3]*d1,add=T, lwd = 2)
+curve(coef(lm1)[1] + coef(lm1)[2]*x + coef(lm1)[3]*d2,add=T, lwd = 2)
+legend("topright", c("10", "100"), col = c("black","red"), lty = 1, lwd = 2,
+       title = "Depth", bty="n")
+```
+
+
+```{r}
+ele <- read.csv("~/710 Test 2/Labs/ele.csv")
+du <- ele$dung/ele$tlen
+mod1 <- glm(du ~ dist + elv + factor(park) + dist:elv, family = poisson, data = ele)
+summary(mod1)
+mod2 <- glm(du ~ dist + factor(park), family = quasipoisson, data = ele)
+summary(mod2)
+
+```
+```{r}
+
+```
+
+```{r}
+
+```
+

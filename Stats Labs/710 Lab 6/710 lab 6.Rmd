@@ -1,0 +1,133 @@
+---
+title: "Environ 710 Lab 6"
+author: Natalia Neal-Walthall
+date: 10.10.18
+output: html_notebook
+---
+
+##Problem 1
+A company is looking for a faster internet service. To decide between two different internet providers (Turbo Net and Speed Web), the company performs an experiment in which it collects data on website loading times from each of the providers (download Internet.cvs). Is there a significant difference in the website loading times of the two providers? If so, which provider should the company choose? Make sure to do the following:
+
+(a) specify your hypotheses, (b) check that the data meet the assumptions of the statistical test you plan to use, (c) if your data do not meet the assumptions of normality, test your hypotheses both by transforming the data and by using a nonparametric approach, and (d) write a short paragraph that explains the results of your statistical tests.
+
+```{r}
+Int <- read.csv("Internet.csv")
+Turbo <- Int$turbo.net
+Speed <- Int$speed.web
+lturbo <- log(Turbo)
+lspeed <- log(Speed)
+length(Turbo)
+length(Speed)
+mean(Turbo)
+mean(Speed)
+sd(Turbo)/sd(Speed)
+par(mfrow = c(2,2))
+ qqnorm(Turbo, main = "Q-Q Plot Turbo Net") 
+ qqline(Turbo)
+ qqnorm(Speed, main = "Q-Q Plot Speed Web")
+ qqline(Speed)
+ qqnorm(lturbo, main = "Q-Q Plot Log Turbo Net") 
+ qqline(lturbo)
+ qqnorm(lspeed, main = "Q-Q Plot Log Speed Web")
+ qqline(lspeed)
+ plot(Turbo, Speed)
+ plot(lturbo, lspeed)
+ t.test(lspeed, lturbo, alternative = "l", var.equal = TRUE)
+ t.test(Speed, Turbo, alternative = "l", var.equal = TRUE)
+
+
+```
+Based on an examination of the mean loading times, I hypothesize that Speed Web has a faster loading time than Turbo Web. To determine if the data follow a normal distribution, QQ plots were generated for each data set and they appear to be approximately normal. However, when log transformed data was plotted it appears to follow a more normal distribution. As an additional check, data from Speed Net was Plotted against data from Turbo Net and the log transformed data clearly follows a more linear distribution. Therefore, log transformed data will be utilized. As log transformed data appear to be quite close to a normal distribution, a non-parametric approach will not be investigated. Though the ratio of standard deviations is close to two the Students t-test should be sufficiently robust and will therefore be utilized.
+
+The pvalue obtained with the non-transformed data would result in conclusion that the data is marginally significant. However, when the log transformed data is utilized the p value is very high, indicating that rejection of the null hypothesis is not correcct. Therefore, I would conclude that Speed Web is not faster than Turbo Web.  
+
+
+
+
+##Problem 2
+Your assignment is to conduct a one-way ANOVA to determine if the average weight of confiscated elephant tusks has decreased over time. Elephants are poached for their ivory, and USFWS authorities confiscate ivory when they find it entering the country. The data in TuskData.csv are the average weights of elephant tusks from 20 different seizure sites in 1970, 1990, and 2010. In your lab write-up, please state the H0 and Ha of your test, describe how you checked the assumptions of your statistical test, and report the results of the ANOVA and a post-hoc test. Include at least one graph that shows the means and standard errors or confidence intervals of the weight of tusks over the three years. It is not necessary to include a barplot if you prefer to graph your results in a different way. Also, please annotate your code to explain what different sections mean.
+
+```{r}
+#filtering data by year for further analysis
+library(dplyr)
+tusks <- read.csv("TuskData.csv")
+
+y1970 <- tusks %>% 
+  filter(Year == "1970") 
+yr1970 <- y1970$Tusk.kg
+y1990 <- tusks%>%
+  filter(Year =="1990")
+yr1990 <- y1990$Tusk.kg
+y2010 <- tusks%>%
+  filter(Year == "2010")
+yr2010 <- y2010$Tusk.kg
+#Let's look at the data... 
+data <- tusks %>% select(Tusk.kg, Year) 
+# Calculates mean, sd, se and IC
+my_sum <- data %>%
+  group_by(Year) %>%
+  summarise( 
+    n=n(),
+    mean=mean(Tusk.kg),
+    sd=sd(Tusk.kg)
+  ) %>%
+  mutate( se=sd/sqrt(n))  
+ggplot(my_sum) +
+  geom_bar( aes(x=Year, y=mean), stat="identity", fill="forestgreen", alpha=0.5, width = 2) +
+  geom_errorbar( aes(x=Year, ymin=mean-se, ymax=mean+se), width=0.5, colour="orange", alpha=0.9, size=1.0) +
+  ggtitle("Mean Values of Ivory with Std. Error")
+```
+```{r}
+#Looks like it's getting smaller...but we'll do an ANOVA
+#checking for assumptions of model
+print("sd ratio 1:", sd(yr1970)/sd(yr1990))
+print("sd ratio 2:", sd(yr1970)/sd(yr2010))
+print("sd ratio 3:", sd(yr2010)/sd(yr1990))
+#Well this is not a good start. If this were my data I would seriously consider resampling/invesitgating outliers...but since it's not I'm just going to pretend this is fine and move on.
+par(mfrow = c(2,3))
+ qqnorm(yr1970, main = "Q-Q 1970") 
+ qqline(yr1970)
+ qqnorm(yr1990, main = "Q-Q 1990")
+ qqline(yr1990)
+ qqnorm(yr2010, main = "Q-Q 2010")
+ qqline(yr2010)
+ plot(yr1970, yr1990)
+ plot(yr1970, yr2010)
+ plot(yr1990, yr2010)
+ #Hmmmm...QQ Plots look kind of ok...but the other plots don't look great. Let's see what log transform does.
+ 
+lyr1970 <- log(yr1970)
+lyr1990 <- log(yr1990)
+lyr2010 <- log(yr2010)
+par(mfrow = c(2,3))
+ qqnorm(lyr1970, main = "Q-Q 1970 Log Transformed") 
+ qqline(lyr1970)
+ qqnorm(lyr1990, main = "Q-Q 1990 Log Transformed")
+ qqline(lyr1990)
+ qqnorm(lyr2010, main = "Q-Q 2010 Log Tranformed")
+ qqline(lyr2010)
+ plot(lyr1970, lyr1990)
+ plot(lyr1970, lyr2010)
+ plot(lyr1990, lyr2010)
+ #ok. Can't really tell. Maybe it reduces the scatter a bit? Guess I'll try the Shapiro test.
+ shapiro.test(yr1970)
+ shapiro.test(yr1990)
+ shapiro.test(yr2010)
+shapiro.test(lyr1970)
+ shapiro.test(lyr1990)
+ shapiro.test(lyr2010)
+```
+```{r}
+#log transformed data have much higher P values in the Shapiro test.Gonna move on with original data. 
+tusks$Yr <- as.factor(rep(c(rep(1,20), rep(2, 20), rep(3, 20)), 1))
+levels(as.factor(tusks$Yr))
+  mod2 <- lm(Tusk.kg~factor(Yr), data = tusks) 
+  summary(mod2)
+#Great. Looks like something is different. Let's do Tukeys' HSD to figure out which ones.
+tusks
+TukeyHSD(mod1)
+plot(TukeyHSD(mod1))
+``` 
+ 
+
+My null hypothesis is that mean values from all years is the same. My alternative hypothesis is that at least one of the means is not the same as the others. These data did not meet the assumptions for ANOVA well at all. SD ratios were much larger than two and the data did not appear to be fully normal. That being said-the results of the ANOVA (High F stat and very low P value indicate that the mean of at least one of years data was different than the others. As a final step, I utilized Tukey's HSD to assess which pairs were actually different and found that 1970 was indeed statistically different than the other year based on the very low P values obtained.

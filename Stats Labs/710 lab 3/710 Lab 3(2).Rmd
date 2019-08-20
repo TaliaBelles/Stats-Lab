@@ -1,0 +1,96 @@
+---
+title: "Environ 710 Lab 3: Sampling"
+subtitle: Natalia Neal-Walthall
+date: 9.14.18
+output: html_notebook
+---
+
+
+##Problem 1
+
+The water quality standard (in natural log) is 6, and we know that the true distribution of the log concentration is N (μ = 4, σ = 1.4). This distribution has a 90th percentile value of 5.8, which means that if we repeatedly sample from this distribution, 90% of the time we will have values below 5.8 (in compliance with the water quality standard of 6).
+How do we know the value of the 90th percentile for this distribution? We use qnorm to find the quantile for a given probability of a normal distribution with a mean of 4 and a standard deviation of 1.4. This line of code calculates the quantile of a given probability for a normal distribution with our parameters.
+```{r}
+qnorm(p = 0.90, mean = 4, sd = 1.4)
+```
+If the water quality standard was lowered to 5, what percent of the time would we find lower water quality
+values?
+```{r}
+pnorm(5, mean = 4, sd = 1.4)
+```
+76% of the time log concentration of the contaminant would fall below 5. 
+
+Now let’s sample from this distribution, using set.seed to get replicable results. Pull 12 random values from
+our distribution of pollutant concentration.
+```{r}
+ set.seed(1001)
+draw1 <- rnorm(12, mean = 4, sd = 1.4)
+sort(draw1)
+
+(sum(draw1>6))/10
+```
+Based on EPA’s rule, if two or more measurements (10% of 12 = 1.2) exceed 6, the water is impaired. Is the water impaired based on this rule?
+
+Yes. 20% of the water samples exceeded a log concentration of 6, resulting in impairment according to the EPA guidelines.
+
+##Problem 2
+
+Let’s imagine that there are 10 rivers or lakes that have the same distribution of pollutants. Below we simulate taking 12 observations from each water body. The h2o line of code creates a 10 x 12 matrix and fills it with simulated pollutant values. It also converts the matrix to a dataframe so that we can add non-numeric columns to it later on. To make the matrix easy to understand, we change the row and column names so that they are meaningful. The result of the simulation indicates how many rivers would be wrongly declared to be impaired.
+```{r}
+set.seed(1001)
+h2o <- as.data.frame(matrix(rnorm(10*12, mean = 4, sd = 1.4), ncol = 12))
+paste(rep("Riv", nrow(h2o)), c(1:nrow(h2o)), sep = "")
+rownames(h2o) <- paste(rep("Riv", nrow(h2o)), c(1:nrow(h2o)), sep = "")
+colnames(h2o) <- paste(rep("Obs", ncol(h2o)), c(1:ncol(h2o)), sep = "")
+```
+
+Based on EPA’s rule, if greater than 10% of observations exceed 6, the water is considered impaired. With a sample size of 12, a water body is impaired when the number of violations is 2 or more. How many rivers would be wrongly declared as “impaired”?
+There are many approaches to automatically count up the number of observations that exceed 6 for each river (row). The line of code below changes all values of h2o to 1 or 0, if they are greater than or less than 6, respectively: ifelse(h2o>6, 1, 0). Then rowSums adds up all the 1’s for each row (River) of the data frame, indicating the number of observations that surpassed the water quality standard. (This could be broken into two steps, if you find that embedding it in one line of code is difficult to understand.)
+```{r}
+h2o$Test <- rowSums(ifelse(h2o>6, 1, 0))
+h2o$Test
+```
+We can then figure out how many rivers have more than 1 sample that violates the standard by counting the
+number of rivers with more than 1 impairment.
+```{r}
+length(h2o$Test[h2o$Test>1])
+```
+In this example, how many impaired rivers are there?
+
+There are 3 impaired rivers
+
+
+##Problem 3
+Now suppose the distribution of the pollutant variable is N (μ = 4.5, σ = 1.4). If we repeatedly sample from this population distribution, we expect to violate the standard, 6, more than 10% of the time. What percent of the time would we violate the standard from this new distribution?
+```{r}
+r10o10 <-rivers (10, 10)
+r10o50 <- rivers (10, 50) 
+r10o100 <- rivers (10, 100)
+r10o500 <- rivers (10, 500)
+
+r50o10 <-rivers (50, 10)
+r50o50 <- rivers (50, 50)
+r50o100 <- rivers (50, 100)
+r50o500 <- rivers (50, 500)
+
+r100o10 <-rivers (100, 10)
+r100o50 <- rivers (100, 50)
+r100o100 <- rivers (100, 100)
+r100o500 <- rivers (100, 500)
+
+r500o10 <-rivers (500, 10)
+r500o50  <- rivers (500, 50)
+r500o100 <- rivers (500, 100)
+r500o500 <- rivers (500, 500)
+
+r10 <- c(r10o10, r10o50, r10o100, r10o500)
+r50 <- c(r50o10, r50o50, r50o100, r50o500)
+r100 <- c(r100o10, r100o50, r100o100, r100o500)
+r500 <- c(r500o10, r500o50, r500o100, r500o500)
+
+
+ImpairedRivers <- data.frame(r10, r50, r100, r500)
+rownames(ImpairedRivers) <- paste(c(10, 50, 100, 500), "observations")
+colnames(ImpairedRivers) <- paste(c(10, 50, 100, 500), "rivers") 
+
+ImpairedRivers
